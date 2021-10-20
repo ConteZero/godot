@@ -365,6 +365,7 @@ def configure(env):
     env.Append(LIBS=["GL", "pthread"])
 
     if platform.system() == "Linux":
+        env.Append(CPPDEFINES=["LINUX_ENABLED"])
         env.Append(LIBS=["dl"])
 
     if platform.system().find("BSD") >= 0:

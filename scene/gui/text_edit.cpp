@@ -497,6 +497,8 @@ void TextEdit::_update_selection_mode_word() {
 		}
 	}
 
+	OS::get_singleton()->set_clipboard_primary(get_selection_text());
+
 	update();
 
 	click_select_held->start();
@@ -523,6 +525,7 @@ void TextEdit::_update_selection_mode_line() {
 	cursor_set_column(0);
 
 	select(selection.selecting_line, selection.selecting_column, row, col);
+	OS::get_singleton()->set_clipboard_primary(get_selection_text());
 	update();
 
 	click_select_held->start();
@@ -2556,6 +2559,27 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 				update();
 			}
 
+#ifdef LINUX_ENABLED
+			if (is_middle_mouse_paste_enabled() && mb->get_button_index() == BUTTON_MIDDLE && !readonly) {
+				String paste_buffer = OS::get_singleton()->get_clipboard_primary();
+
+				int row, col;
+				_get_mouse_pos(Point2i(mb->get_position().x, mb->get_position().y), row, col);
+				begin_complex_operation();
+
+				deselect();
+				cursor_set_line(row, true, false);
+				cursor_set_column(col);
+				if (!paste_buffer.empty()) {
+					_insert_text_at_cursor(paste_buffer);
+				}
+				end_complex_operation();
+
+				grab_focus();
+				update();
+			}
+#endif
+
 			if (mb->get_button_index() == BUTTON_RIGHT && context_menu_enabled) {
 				_reset_caret_blink_timer();
 
@@ -2605,6 +2629,7 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 				dragging_selection = false;
 				can_drag_minimap = false;
 				click_select_held->stop();
+				OS::get_singleton()->set_clipboard_primary(get_selection_text());
 			}
 
 			// Notify to show soft keyboard.
@@ -7131,6 +7156,10 @@ void TextEdit::set_virtual_keyboard_enabled(bool p_enable) {
 	virtual_keyboard_enabled = p_enable;
 }
 
+void TextEdit::set_middle_mouse_paste_enabled(bool p_enabled) {
+	middle_mouse_paste_enabled = p_enabled;
+}
+
 void TextEdit::set_selecting_enabled(bool p_enabled) {
 	selecting_enabled = p_enabled;
 
@@ -7151,6 +7180,10 @@ bool TextEdit::is_shortcut_keys_enabled() const {
 
 bool TextEdit::is_virtual_keyboard_enabled() const {
 	return virtual_keyboard_enabled;
+}
+
+bool TextEdit::is_middle_mouse_paste_enabled() const {
+	return middle_mouse_paste_enabled;
 }
 
 PopupMenu *TextEdit::get_menu() const {
@@ -7251,6 +7284,8 @@ void TextEdit::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_shortcut_keys_enabled"), &TextEdit::is_shortcut_keys_enabled);
 	ClassDB::bind_method(D_METHOD("set_virtual_keyboard_enabled", "enable"), &TextEdit::set_virtual_keyboard_enabled);
 	ClassDB::bind_method(D_METHOD("is_virtual_keyboard_enabled"), &TextEdit::is_virtual_keyboard_enabled);
+	ClassDB::bind_method(D_METHOD("set_middle_mouse_paste_enabled", "enable"), &TextEdit::set_middle_mouse_paste_enabled);
+	ClassDB::bind_method(D_METHOD("is_middle_mouse_paste_enabled"), &TextEdit::is_middle_mouse_paste_enabled);
 	ClassDB::bind_method(D_METHOD("set_selecting_enabled", "enable"), &TextEdit::set_selecting_enabled);
 	ClassDB::bind_method(D_METHOD("is_selecting_enabled"), &TextEdit::is_selecting_enabled);
 	ClassDB::bind_method(D_METHOD("is_line_set_as_safe", "line"), &TextEdit::is_line_set_as_safe);
@@ -7361,6 +7396,7 @@ void TextEdit::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shortcut_keys_enabled"), "set_shortcut_keys_enabled", "is_shortcut_keys_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "virtual_keyboard_enabled"), "set_virtual_keyboard_enabled", "is_virtual_keyboard_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "middle_mouse_paste_enabled"), "set_middle_mouse_paste_enabled", "is_middle_mouse_paste_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selecting_enabled"), "set_selecting_enabled", "is_selecting_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "smooth_scrolling"), "set_smooth_scroll_enable", "is_smooth_scroll_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "v_scroll_speed"), "set_v_scroll_speed", "get_v_scroll_speed");
@@ -7529,6 +7565,7 @@ TextEdit::TextEdit() {
 	selecting_enabled = true;
 	context_menu_enabled = true;
 	shortcut_keys_enabled = true;
+	middle_mouse_paste_enabled = true;
 	menu = memnew(PopupMenu);
 	add_child(menu);
 	readonly = true; // Initialise to opposite first, so we get past the early-out in set_readonly.

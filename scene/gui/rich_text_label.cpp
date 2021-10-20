@@ -1170,10 +1170,14 @@ void RichTextLabel::_gui_input(Ref<InputEvent> p_event) {
 						selection.from_char = beg;
 						selection.to_char = end - 1;
 						selection.active = true;
+						OS::get_singleton()->set_clipboard_primary(get_selected_text());
 						update();
 					}
 				}
 			} else if (!b->is_pressed()) {
+				if (selection.enabled) {
+					OS::get_singleton()->set_clipboard_primary(get_selected_text());
+				}
 				selection.click = nullptr;
 
 				if (!b->is_doubleclick() && !scroll_updated) {
@@ -1305,6 +1309,7 @@ void RichTextLabel::_gui_input(Ref<InputEvent> p_event) {
 					swap = true;
 				} else if (selection.from_char == selection.to_char) {
 					selection.active = false;
+					update();
 					return;
 				}
 			}
