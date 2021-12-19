@@ -95,6 +95,9 @@ private:
 
 	bool middle_mouse_paste_enabled;
 
+	bool drag_action = false;
+	bool drag_caret_force_displayed = false;
+
 	Ref<Texture> right_icon;
 
 	struct Selection {
